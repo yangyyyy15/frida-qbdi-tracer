@@ -1,0 +1,16 @@
+0x7ec4599484 [lib52pojie.so!0x10484] 	stp	x22, x21, [sp, #-48]!	 r[X22=0x0 X21=0x0 SP=0xb400007e41931480]
+ w[SP=0xb400007e41931450]
+0x7ec4599488 [lib52pojie.so!0x10488] 	stp	x20, x19, [sp, #16]	 r[X20=0x0 X19=0x0 SP=0xb400007e41931450]
+0x7ec459948c [lib52pojie.so!0x1048c] 	stp	x29, x30, [sp, #32]	 r[FP=0xb400007e41931500 LR=0x2a SP=0xb400007e41931450]
+0x7ec4599490 [lib52pojie.so!0x10490] 	add	x29, sp, #32	 r[SP=0xb400007e41931450]
+ w[FP=0xb400007e41931470]
+0x7ec4599494 [lib52pojie.so!0x10494] 	ldr	x8, [x0]	 r[X0=0x7f6bba2ec0]
+ w[X8=0x3736353433323130]
+0x7ec4599498 [lib52pojie.so!0x10498] 	mov	x20, x2	 r[X2=0x7f67bb1070]
+ w[X20=0x7f67bb1070]
+0x7ec459949c [lib52pojie.so!0x1049c] 	mov	x1, x2	 r[X2=0x7f67bb1070]
+ w[X1=0x7f67bb1070]
+0x7ec45994a0 [lib52pojie.so!0x104a0] 	mov	x2, xzr	
+ w[X2=0x0]
+0x7ec45994a4 [lib52pojie.so!0x104a4] 	ldr	x8, [x8, #1352]	 r[X8=0x3736353433323130]
+[ERROR] Access violation at offset: 0x104a4 (	ldr	x8, [x8, #1352])

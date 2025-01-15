@@ -4,8 +4,17 @@
  * @param {*} log_file_path 日志文件的路径
  */
 export default function warp_vm_run(vm_run_func, log_file_path) {
-    let baselibEncryptor = Module.findBaseAddress("libEncryptor.so");
-    let addr_2BD8 = baselibEncryptor.add(0x2BD8);
+    console.log("[DEBUG] warp_vm_run started.");
+    let baselibEncryptor = Module.findBaseAddress("lib52pojie.so");
+    if (!baselibEncryptor) {
+        console.error("[ERROR] target-so not found!");
+        return;
+    }
+    console.log(`[DEBUG] target-so base address: ${baselibEncryptor.toString(16)}`);
+
+    let addr_2BD8 = baselibEncryptor.add(0x10484);
+    console.log(`[DEBUG] Function address: ${addr_2BD8.toString(16)}`);
+
     let str0 = "0123456789abcdef";
     let arg0 = Memory.allocUtf8String(str0);
     let ret_len = str0.length + 0x76;
@@ -14,14 +23,14 @@ export default function warp_vm_run(vm_run_func, log_file_path) {
     let arg2 = Memory.alloc(16);
     arg2.writeU64(ret_len);
 
-    /**
-     * addr_2BD8 是主动调用函数的地址
-     * [arg0, str0.length, arg1, arg2] 是参数
-     * log_file_path 日志文件的路径
-     */
-    let ret = vm_run_func(addr_2BD8, [arg0, str0.length, arg1, arg2], log_file_path)
+    console.log(`[DEBUG] arg0: ${hexdump(arg0)}`);
+    console.log(`[DEBUG] arg1: ${hexdump(arg1)}`);
+    console.log(`[DEBUG] arg2: ${hexdump(arg2)}`);
+
+    console.log("[DEBUG] Calling vm_run_func...");
+    let ret = vm_run_func(addr_2BD8, [arg0, str0.length, arg1, arg2], log_file_path);
 
     console.log(ret, "\r\n", hexdump(arg1, {
         length: ret_len
-    }))
+    }));
 }
