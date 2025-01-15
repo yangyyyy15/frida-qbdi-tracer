@@ -1,27 +1,34 @@
-import { VM,InstPosition,VMAction,Options,MemoryAccessType,AnalysisType,RegisterAccessType,OperandType } from "./QBDI/frida-qbdi.js";
-
+import { VM, InstPosition, VMAction, Options, MemoryAccessType, AnalysisType, RegisterAccessType, OperandType } from "./QBDI/frida-qbdi.js";
 import warp_vm_run from "./warp_vm_run.js";
-
 
 function vm_run(func_ptr, args, log_file_path) {
     let start_time = new Date().getTime();
+    console.log("[DEBUG] Starting VM run...");
 
     let vm = new VM();
-    vm.setOptions(Options.OPT_DISABLE_LOCAL_MONITOR | Options.OPT_BYPASS_PAUTH | Options.OPT_ENABLE_BTI)
+    console.log("[DEBUG] VM instance created.");
+
+    vm.setOptions(Options.OPT_DISABLE_LOCAL_MONITOR | Options.OPT_BYPASS_PAUTH | Options.OPT_ENABLE_BTI);
+    console.log("[DEBUG] VM options set.");
 
     vm.allocateVirtualStack(vm.getGPRState(), 0x100000);
+    console.log("[DEBUG] Virtual stack allocated.");
 
     console.log("log_file_path: ", log_file_path);
-    let file_pointer = new File(log_file_path, "w")
+    let file_pointer = new File(log_file_path, "w");
+    console.log("[DEBUG] Log file opened.");
 
     let module = Process.findModuleByAddress(func_ptr);
     let user_data = {
         "file_pointer": file_pointer,
         "module_base": module.base,
         "module_name": module.name
-    }
+    };
+    console.log(`[DEBUG] Instrumenting module: ${module.name} at base address: ${module.base.toString(16)}`);
 
-    vm.addInstrumentedModuleFromAddr(func_ptr)
+    vm.addInstrumentedModuleFromAddr(func_ptr);
+    console.log("[DEBUG] Module instrumented.");
+
     let preinst_callback = vm.newInstCallback(function (vm, gpr, fpr, data) {
         let _user_data = data;
         let inst = vm.getInstAnalysis(AnalysisType.ANALYSIS_INSTRUCTION | AnalysisType.ANALYSIS_DISASSEMBLY | AnalysisType.ANALYSIS_OPERANDS | AnalysisType.ANALYSIS_SYMBOL);
@@ -45,12 +52,13 @@ function vm_run(func_ptr, args, log_file_path) {
             if (read_regs[read_regs.length - 1] === " ") {
                 read_regs = read_regs.slice(0, -1);
             }
-            log += " r[" + read_regs + "]"
+            log += " r[" + read_regs + "]";
         }
 
         _user_data.file_pointer.write(log);
         return VMAction.CONTINUE;
     });
+
     let postinst_callback = vm.newInstCallback(function (vm, gpr, fpr, data) {
         let _user_data = data;
         let inst = vm.getInstAnalysis(AnalysisType.ANALYSIS_INSTRUCTION | AnalysisType.ANALYSIS_DISASSEMBLY | AnalysisType.ANALYSIS_OPERANDS | AnalysisType.ANALYSIS_SYMBOL);
@@ -72,7 +80,7 @@ function vm_run(func_ptr, args, log_file_path) {
             if (write_regs[write_regs.length - 1] === " ") {
                 write_regs = write_regs.slice(0, -1);
             }
-            let log = " w[" + write_regs + "]\n"
+            let log = " w[" + write_regs + "]\n";
             _user_data.file_pointer.write(log);
         } else {
             let log = "\n";
@@ -101,7 +109,6 @@ function vm_run(func_ptr, args, log_file_path) {
                 log += ", data value = " + memory_access.value.toString(16) + "\n";
                 _user_data.file_pointer.write(log);
             }
-
         });
         return VMAction.CONTINUE;
     });
@@ -109,11 +116,13 @@ function vm_run(func_ptr, args, log_file_path) {
     vm.addCodeCB(InstPosition.PREINST, preinst_callback, user_data);
     vm.addCodeCB(InstPosition.POSTINST, postinst_callback, user_data);
     vm.addMemAccessCB(MemoryAccessType.MEMORY_READ_WRITE, memory_access_callback, user_data);
+    console.log("[DEBUG] Callbacks added to VM.");
+
     console.log("start vm.call");
     let ret = vm.call(func_ptr, args);
     file_pointer.close();
     let end_time = new Date().getTime();
-    console.log('cost is', `${(end_time - start_time)/1e3}s`)
+    console.log('cost is', `${(end_time - start_time)/1e3}s`);
     return ret;
 }
 
@@ -122,6 +131,7 @@ function chmod(path) {
     var chmod_func = new NativeFunction(chmod_ptr, 'int', ['pointer', 'int']);
     var c_path = Memory.allocUtf8String(path);
     chmod_func(c_path, parseInt('0755', 8));
+    console.log(`[DEBUG] chmod 0755 applied to: ${path}`);
 }
 
 function getContext() {
@@ -138,35 +148,39 @@ async function getFilesDir() {
             if (!file.exists()) {
                 file.mkdirs();
             }
+            console.log(`[DEBUG] Files directory: ${path}`);
             resolve(path);
-        })
-    })
+        });
+    });
 }
+
 async function checkQBDIExist(so_path) {
     return await new Promise(resolve => {
         Java.perform(() => {
             let File = Java.use("java.io.File");
             let file = File.$new(so_path);
             if (file.exists()) {
-                resolve(true)
+                console.log(`[DEBUG] libQBDI.so exists at: ${so_path}`);
+                resolve(true);
+            } else {
+                console.log(`[DEBUG] libQBDI.so does not exist at: ${so_path}`);
+                resolve(false);
             }
-            resolve(false);
-        })
-    })
+        });
+    });
 }
-
-
 
 function call_vm_run(log_file_path) {
-    warp_vm_run(vm_run, log_file_path)
+    console.log("[DEBUG] Calling warp_vm_run...");
+    warp_vm_run(vm_run, log_file_path);
 }
-
 
 rpc.exports = {
     getfilesdir: function () {
         return getFilesDir();
     },
     writelibqbdiso: function (so_path, so_buffer) {
+        console.log(`[DEBUG] Writing libQBDI.so to: ${so_path}`);
         let file = new File(so_path, "wb");
         file.write(so_buffer);
         file.close();
@@ -177,7 +191,7 @@ rpc.exports = {
     },
     vmrun: function (log_file_path) {
         console.log("start vmrun");
-        call_vm_run(log_file_path)
+        call_vm_run(log_file_path);
         console.log("end vmrun");
     }
-}
+};
